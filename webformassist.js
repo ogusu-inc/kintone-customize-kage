@@ -142,7 +142,7 @@ function extractType(field,key,idx) {
 function getItemdata(item,key){
     var type = item.getAttribute('class');
     switch (type) {
-        case 'kb-field':
+        case 'bst-field':
             // var query = `.bst-field[field-id="${key}"] input, ` +
             //             `.bst-field[field-id="${key}"] select, ` + 
             //             `.bst-field[field-id="${key}"] textarea`;
@@ -185,7 +185,7 @@ function getItemdata(item,key){
                 value : inputField.value
             }
             return data;
-        case 'kb-table':
+        case 'bst-table':
             var tr = item.querySelectorAll('tr');
             // var query = `.bst-table[field-id="${key}"] > tbody > tr > input, ` + 
             //             `.bst-table[field-id="${key}"] > tbody > tr  > select, ` + 
@@ -217,7 +217,7 @@ function setItemdata(item,key){
     var type = item.type;
     var value = item.value;
     switch (type) {
-        case 'kb-field':
+        case 'bst-field':
             var query = `${rowIndex}.bst-field[field-id="${key}"] input, ` +
                         `${rowIndex}.bst-field[field-id="${key}"] select, ` + 
                         `${rowIndex}.bst-field[field-id="${key}"] textarea`;
@@ -255,7 +255,7 @@ function setItemdata(item,key){
                 inputField.value = value;
             }
             break;
-        case 'kb-table':
+        case 'bst-table':
             for (let i = 0; i < value.length; i++) {
                 // 項目が複数ある場合は行を追加
                 if (i > 0) {
@@ -379,7 +379,7 @@ window.addEventListener('load', function () {
             title[0].appendChild(clearButton);
         }
 
-        // kb-injector-buttonクラスを持つすべての要素を取得
+        // bst-injector-buttonクラスを持つすべての要素を取得
         var buttons = document.querySelectorAll('.bst-injector-button');
 
         // 各ボタンにクリックイベントを追加
@@ -458,120 +458,4 @@ window.addEventListener('load', function () {
 
         return decrypted.toString(CryptoJS.enc.Utf8); // UTF-8形式で復号化されたテキストを返す
     }
-    setTimeout(function () {
-        // // 付与されたパラメータを取得
-        // var params = new URLSearchParams(window.location.search);
-        // const paramText = params.get('data');
-        // if(params.size){
-        //     fetchData(paramText)
-        //         .then(data => {
-        //             if (data) {
-        //                 const password = 'og-ogsas';
-        //                 try {
-        //                     const decryptedData = decrypt(data, password);
-        //                     const jsonparam = JSON.parse(decryptedData);
-        //                     Object.keys(jsonparam).forEach(function(key) {
-        //                         if (jsonparam[key]["type"] != 'NONE'){
-        //                             extractType(jsonparam,key,"");
-        //                         }
-        //                     });
-        //                 } catch (error) {
-        //                     console.error(error.message);
-        //                 }
-        //             } else {
-        //                 console.log('No data found for the given hash.');
-        //             }
-        //         });
-        // }
-        // if(!params.size){
-        //     // 前回保存されたデータをlocalStorageから読み込む
-        //     var savedData = localStorage.getItem(pageKey.split('?')[0]);
-        //     if (savedData) {
-        //         var data = JSON.parse(savedData);
-        //         Object.keys(data.fields).forEach(function(key) {
-        //             setItemdata(data.fields[key],key);
-        //         });
-        //     }
-        
-        // }
-
-        // // 保存ボタンを作成
-        // var saveButton = document.createElement('button');
-        // saveButton.id = 'saveButton';
-        // saveButton.textContent = '保存';
-        // saveButton.style.backgroundColor = 'lime'; // ボタンの色を緑に設定
-        // saveButton.style.marginLeft = '10px'; // 左側にスペースを追加
-        // saveButton.style.verticalAlign = 'text-bottom';
-
-        // // クリアボタンを作成
-        // var clearButton = document.createElement('button');
-        // clearButton.id = 'clearButton';
-        // clearButton.textContent = 'クリア';
-        // clearButton.style.backgroundColor = 'red'; // ボタンの色を赤に設定
-        // clearButton.style.marginLeft = '10px'; // 左側にスペースを追加
-        // clearButton.style.verticalAlign = 'text-bottom';
-
-        // var title = document.querySelectorAll('.bst-injector-header-title');
-        // if (title[0]) {
-        //     title[0].appendChild(saveButton);
-        //     title[0].appendChild(clearButton);
-        // }
-
-        // // kb-injector-buttonクラスを持つすべての要素を取得
-        // var buttons = document.querySelectorAll('.bst-injector-button');
-
-        // // 各ボタンにクリックイベントを追加
-        // buttons.forEach(function (button) {
-        //     button.addEventListener('click', function () {
-        //         localStorage.removeItem(pageKey);
-        //     });
-        // });
-
-        // // 保存ボタンがクリックされたときの処理を追加
-        // saveButton.addEventListener('click', function () {
-        //     // 警告を表示してユーザーに確認
-        //     var confirmSave = confirm('共有のデバイス（職場のパソコンなど）では保存したデータが第三者に見られる危険があります。それでも保存しますか？');
-        //     if (confirmSave) {
-        //         // IDに'input'を含むすべてのinputタグを取得
-        //         // var inputFields = document.querySelectorAll('input, select, textarea');`.bst-field:not(.bst-unuse), .bst-table(.bst-unuse)`
-        //         var inputFields = document.querySelectorAll('.bst-injector-body > .bst-field:not(.bst-unuse), .bst-injector-body > .bst-table:not(.bst-unuse)');
-        //         var fielddata = {};
-        //         // 取得した要素をログに表示
-        //         inputFields.forEach(element => {
-        //             var id = element.getAttribute('field-id');
-        //             fielddata[id] = getItemdata(element,id);                    
-        //         });
-        //         var data = {
-        //             url: pageKey.split('?')[0], // 保存時に現在のページのURLを含む
-        //             fields: fielddata // 入力データを保存
-        //         };
-
-        //         // データをlocalStorageに保存
-        //         localStorage.setItem(pageKey.split('?')[0], JSON.stringify(data));
-
-        //         // classが'test'のmain要素を取得
-        //         var mainElement = document.querySelector('.bst-injector-body');
-
-        //         if (mainElement) {
-        //             // 'unsaved'属性を削除
-        //             mainElement.removeAttribute('unsaved');
-        //         }
-        //         alert('データが保存されました');
-        //     } else {
-        //         alert('保存がキャンセルされました');
-        //     }
-        // });
-
-        // // クリアボタンがクリックされたときの処理を追加
-        // clearButton.addEventListener('click', function () {
-        //     var confirmClear = confirm('現在のページの保存データをクリアしますか？');
-        //     if (confirmClear) {
-        //         localStorage.removeItem(pageKey);
-        //         alert('保存データがクリアされました');
-        //         window.location.reload(); // ページをリロードして入力フィールドを初期化
-        //     } else {
-        //         alert('クリアがキャンセルされました');
-        //     }
-        // });
-    }, 2000);
 });
