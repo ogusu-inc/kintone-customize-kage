@@ -1,4 +1,5 @@
-console.log("SCRIPT LOADED SUCCESSFULLY");
+console.log("INJECTOR SCRIPT RUNNING");
+
 window.addEventListener('load', function () {
     'use strict';
 
