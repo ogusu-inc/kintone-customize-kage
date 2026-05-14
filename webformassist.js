@@ -32,17 +32,17 @@ function extractType(field,key,idx) {
     var inputtype = 0;
     switch (field[key]["type"]) {
         case 'SINGLE_LINE_TEXT':
-            query = `${idx}.kb-field[field-id="${key}"] input`;
+            query = `${idx}.bst-field[field-id="${key}"] input`;
             value = field[key]["value"];
             inputtype = 1;
             break;
         case 'RADIO_BUTTON':
-            query = `${idx}.kb-field[field-id="${key}"]`;
+            query = `${idx}.bst-field[field-id="${key}"]`;
             value = field[key]["value"];
             inputtype = 2;
             break;
         case 'CHECK_BOX':
-            query = `${idx}.kb-field[field-id="${key}"]`;
+            query = `${idx}.bst-field[field-id="${key}"]`;
             value = field[key]["value"];
             if (value) {
                 inputtype = 2;
@@ -52,41 +52,41 @@ function extractType(field,key,idx) {
             }
             break;
         case 'DROP_DOWN':
-            query = `${idx}.kb-field[field-id="${key}"] select`;
+            query = `${idx}.bst-field[field-id="${key}"] select`;
             value = field[key]["value"];
             inputtype = 1;
             break;
         // case 'USER_SELECT':
-        //     query = `.kb-field[field-id="${key}"] input`;
+        //     query = `.bst-field[field-id="${key}"] input`;
         //     value = field[key]["value"];
         //     break;
         case 'NUMBER':
-            query = `${idx}.kb-field[field-id="${key}"] input`;
+            query = `${idx}.bst-field[field-id="${key}"] input`;
             value = field[key]["value"];
             inputtype = 1;
             break;
         // case 'ORGANIZATION_SELECT':
-        //     query = `.kb-field[field-id="${key}"] input`;
+        //     query = `.bst-field[field-id="${key}"] input`;
         //     value = field[key]["value"];
         //     inputtype = 1;
         //     break;
         case 'DATE':
-            query = `${idx}.kb-field[field-id="${key}"] input`;
+            query = `${idx}.bst-field[field-id="${key}"] input`;
             value = field[key]["value"];
             inputtype = 1;
             break;
         case 'TIME':
-            query = `${idx}.kb-field[field-id="${key}"]`;
+            query = `${idx}.bst-field[field-id="${key}"]`;
             value = field[key]["value"];
             inputtype = 3;
             break;
         case 'MULTI_LINE_TEXT':
-            query = `${idx}.kb-field[field-id="${key}"] textarea`;
+            query = `${idx}.bst-field[field-id="${key}"] textarea`;
             value = field[key]["value"];
             inputtype = 1;
             break;
         case 'RICH_TEXT':
-            query = `${idx}.kb-field[field-id="${key}"] textarea`;
+            query = `${idx}.bst-field[field-id="${key}"] textarea`;
             value = field[key]["value"];
             inputtype = 1;
             break;
@@ -94,10 +94,10 @@ function extractType(field,key,idx) {
             for (let i = 0; i < field[key]["value"].length; i++) {
                 // 項目が複数ある場合は行を追加
                 if (i > 0) {
-                    var table = document.querySelector(`${idx}table.kb-table[field-id="${key}"]`);
-                    var child = document.querySelector(`${idx}table.kb-table[field-id="${key}"] tbody tr`);
+                    var table = document.querySelector(`${idx}table.bst-table[field-id="${key}"]`);
+                    var child = document.querySelector(`${idx}table.bst-table[field-id="${key}"] tbody tr`);
                     table.insertRow(child);
-                    rowIndex = `tr.kb-scope[row-idx="${i}"] `;
+                    rowIndex = `tr.bst-scope[row-idx="${i}"] `;
                 }
                 Object.keys(field[key]["value"][i]).forEach(function(subkey) {
                     if (field[key]["value"][i][subkey]["type"] != 'NONE'){
@@ -123,13 +123,13 @@ function extractType(field,key,idx) {
                     element.checked = false;                    
                 });
                 var inputcheck = document.querySelector(query + " input[value='" + value + "']");
-                var inputField = document.querySelector(query + " .kb-guide");
+                var inputField = document.querySelector(query + " .bst-guide");
                 inputField.textContent = value;
                 inputcheck.checked = true;
             break;
             case 3:
-                var inputhour = document.querySelector(query + " .kb-hour select");
-                var inputminute = document.querySelector(query + " .kb-minute select");
+                var inputhour = document.querySelector(query + " .bst-hour select");
+                var inputminute = document.querySelector(query + " .bst-minute select");
                 inputhour.value = value.split(":")[0];
                 inputminute.value = value.split(":")[1];
             break;
@@ -143,14 +143,14 @@ function getItemdata(item,key){
     var type = item.getAttribute('class');
     switch (type) {
         case 'kb-field':
-            // var query = `.kb-field[field-id="${key}"] input, ` +
-            //             `.kb-field[field-id="${key}"] select, ` + 
-            //             `.kb-field[field-id="${key}"] textarea`;
-            const ischeckbox = item.querySelector('.kb-checkbox');
-            const isradio = item.querySelector('.kb-radio');
-            const istime = item.querySelector('.kb-hour');
+            // var query = `.bst-field[field-id="${key}"] input, ` +
+            //             `.bst-field[field-id="${key}"] select, ` + 
+            //             `.bst-field[field-id="${key}"] textarea`;
+            const ischeckbox = item.querySelector('.bst-checkbox');
+            const isradio = item.querySelector('.bst-radio');
+            const istime = item.querySelector('.bst-hour');
             if (ischeckbox) {
-                var span = item.querySelector('.kb-checkbox .kb-guide');
+                var span = item.querySelector('.bst-checkbox .bst-guide');
                 var data = {
                     id : key,
                     type : type,
@@ -159,7 +159,7 @@ function getItemdata(item,key){
                 return data;
             }
             if (isradio) {
-                var span = item.querySelector('.kb-radio .kb-guide');
+                var span = item.querySelector('.bst-radio .bst-guide');
                 var data = {
                     id : key,
                     type : type,
@@ -168,8 +168,8 @@ function getItemdata(item,key){
                 return data;
             }
             if (istime) {
-                var inputhour = item.querySelector('.kb-hour select');
-                var inputminute = item.querySelector('.kb-minute select');
+                var inputhour = item.querySelector('.bst-hour select');
+                var inputminute = item.querySelector('.bst-minute select');
                 var data = {
                     id : key,
                     type : type,
@@ -187,13 +187,13 @@ function getItemdata(item,key){
             return data;
         case 'kb-table':
             var tr = item.querySelectorAll('tr');
-            // var query = `.kb-table[field-id="${key}"] > tbody > tr > input, ` + 
-            //             `.kb-table[field-id="${key}"] > tbody > tr  > select, ` + 
-            //             `.kb-table[field-id="${key}"] > tbody > tr  > textarea, ` + 
-            //             `.kb-table[field-id="${key}"] > tbody > tr  > table`;
+            // var query = `.bst-table[field-id="${key}"] > tbody > tr > input, ` + 
+            //             `.bst-table[field-id="${key}"] > tbody > tr  > select, ` + 
+            //             `.bst-table[field-id="${key}"] > tbody > tr  > textarea, ` + 
+            //             `.bst-table[field-id="${key}"] > tbody > tr  > table`;
             var subarray = [];
             tr.forEach(element => {
-                var query = `.kb-field, .kb-table`;
+                var query = `.bst-field, .bst-table`;
                 var inputFields = element.querySelectorAll(query);
                 var subdata = {};
                 inputFields.forEach(input => {
@@ -218,35 +218,35 @@ function setItemdata(item,key){
     var value = item.value;
     switch (type) {
         case 'kb-field':
-            var query = `${rowIndex}.kb-field[field-id="${key}"] input, ` +
-                        `${rowIndex}.kb-field[field-id="${key}"] select, ` + 
-                        `${rowIndex}.kb-field[field-id="${key}"] textarea`;
-            var ischeckbox = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] .kb-checkbox`);
-            var isradio = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] .kb-radio`);
-            var istime = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] .kb-hour`);
+            var query = `${rowIndex}.bst-field[field-id="${key}"] input, ` +
+                        `${rowIndex}.bst-field[field-id="${key}"] select, ` + 
+                        `${rowIndex}.bst-field[field-id="${key}"] textarea`;
+            var ischeckbox = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] .bst-checkbox`);
+            var isradio = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] .bst-radio`);
+            var istime = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] .bst-hour`);
             if (ischeckbox && value) {
-                var inputcheckboxs = document.querySelectorAll(`${rowIndex}.kb-field[field-id="${key}"] input`);
+                var inputcheckboxs = document.querySelectorAll(`${rowIndex}.bst-field[field-id="${key}"] input`);
                 inputcheckboxs.forEach(element => {
                     element.checked = false;
                 });
-                var inputcheck = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] input[value=${value}]`);
-                var inputField = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] .kb-guide`);
+                var inputcheck = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] input[value=${value}]`);
+                var inputField = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] .bst-guide`);
                 inputField.textContent = value;
                 inputcheck.checked = true;
             }
             else if (isradio && value) {
-                var inputradios = document.querySelectorAll(`${rowIndex}.kb-field[field-id="${key}"] input`);
+                var inputradios = document.querySelectorAll(`${rowIndex}.bst-field[field-id="${key}"] input`);
                 inputradios.forEach(element => {
                     element.checked = false;
                 });
-                var inputradio = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] input[value=${value}]`);
-                var inputField = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] .kb-guide`);
+                var inputradio = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] input[value=${value}]`);
+                var inputField = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] .bst-guide`);
                 inputField.textContent = value;
                 inputradio.checked = true;
             }
             else if (istime) {
-                var inputhour = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] .kb-hour select`);
-                var inputminute = document.querySelector(`${rowIndex}.kb-field[field-id="${key}"] .kb-minute select`);
+                var inputhour = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] .bst-hour select`);
+                var inputminute = document.querySelector(`${rowIndex}.bst-field[field-id="${key}"] .bst-minute select`);
                 inputhour.value = value.split(":")[0];
                 inputminute.value = value.split(":")[1];
             }
@@ -259,10 +259,10 @@ function setItemdata(item,key){
             for (let i = 0; i < value.length; i++) {
                 // 項目が複数ある場合は行を追加
                 if (i > 0) {
-                    var table = document.querySelector(`.kb-table[field-id="${key}"]`);
-                    var child = document.querySelector(`.kb-table[field-id="${key}"] tbody tr`);
+                    var table = document.querySelector(`.bst-table[field-id="${key}"]`);
+                    var child = document.querySelector(`.bst-table[field-id="${key}"] tbody tr`);
                     table.insertRow(child);
-                    rowIndex = `tr.kb-scope[row-idx="${i}"] `;
+                    rowIndex = `tr.bst-scope[row-idx="${i}"] `;
                 }
                 Object.keys(value[i]).forEach(function(subkey) {
                     if (value[i][subkey]["type"] != 'NONE'){
@@ -373,14 +373,14 @@ window.addEventListener('load', function () {
         clearButton.style.marginLeft = '10px'; // 左側にスペースを追加
         clearButton.style.verticalAlign = 'text-bottom';
 
-        var title = document.querySelectorAll('.kb-injector-header-title');
+        var title = document.querySelectorAll('.bst-injector-header-title');
         if (title[0]) {
             title[0].appendChild(saveButton);
             title[0].appendChild(clearButton);
         }
 
         // kb-injector-buttonクラスを持つすべての要素を取得
-        var buttons = document.querySelectorAll('.kb-injector-button');
+        var buttons = document.querySelectorAll('.bst-injector-button');
 
         // 各ボタンにクリックイベントを追加
         buttons.forEach(function (button) {
@@ -395,8 +395,8 @@ window.addEventListener('load', function () {
             var confirmSave = confirm('共有のデバイス（職場のパソコンなど）では保存したデータが第三者に見られる危険があります。それでも保存しますか？');
             if (confirmSave) {
                 // IDに'input'を含むすべてのinputタグを取得
-                // var inputFields = document.querySelectorAll('input, select, textarea');`.kb-field:not(.kb-unuse), .kb-table(.kb-unuse)`
-                var inputFields = document.querySelectorAll('.kb-injector-body > .kb-field:not(.kb-unuse), .kb-injector-body > .kb-table:not(.kb-unuse)');
+                // var inputFields = document.querySelectorAll('input, select, textarea');`.bst-field:not(.bst-unuse), .bst-table(.bst-unuse)`
+                var inputFields = document.querySelectorAll('.bst-injector-body > .bst-field:not(.bst-unuse), .bst-injector-body > .bst-table:not(.bst-unuse)');
                 var fielddata = {};
                 // 取得した要素をログに表示
                 inputFields.forEach(element => {
@@ -412,7 +412,7 @@ window.addEventListener('load', function () {
                 localStorage.setItem(pageKey.split('?')[0], JSON.stringify(data));
 
                 // classが'test'のmain要素を取得
-                var mainElement = document.querySelector('.kb-injector-body');
+                var mainElement = document.querySelector('.bst-injector-body');
 
                 if (mainElement) {
                     // 'unsaved'属性を削除
@@ -511,14 +511,14 @@ window.addEventListener('load', function () {
         // clearButton.style.marginLeft = '10px'; // 左側にスペースを追加
         // clearButton.style.verticalAlign = 'text-bottom';
 
-        // var title = document.querySelectorAll('.kb-injector-header-title');
+        // var title = document.querySelectorAll('.bst-injector-header-title');
         // if (title[0]) {
         //     title[0].appendChild(saveButton);
         //     title[0].appendChild(clearButton);
         // }
 
         // // kb-injector-buttonクラスを持つすべての要素を取得
-        // var buttons = document.querySelectorAll('.kb-injector-button');
+        // var buttons = document.querySelectorAll('.bst-injector-button');
 
         // // 各ボタンにクリックイベントを追加
         // buttons.forEach(function (button) {
@@ -533,8 +533,8 @@ window.addEventListener('load', function () {
         //     var confirmSave = confirm('共有のデバイス（職場のパソコンなど）では保存したデータが第三者に見られる危険があります。それでも保存しますか？');
         //     if (confirmSave) {
         //         // IDに'input'を含むすべてのinputタグを取得
-        //         // var inputFields = document.querySelectorAll('input, select, textarea');`.kb-field:not(.kb-unuse), .kb-table(.kb-unuse)`
-        //         var inputFields = document.querySelectorAll('.kb-injector-body > .kb-field:not(.kb-unuse), .kb-injector-body > .kb-table:not(.kb-unuse)');
+        //         // var inputFields = document.querySelectorAll('input, select, textarea');`.bst-field:not(.bst-unuse), .bst-table(.bst-unuse)`
+        //         var inputFields = document.querySelectorAll('.bst-injector-body > .bst-field:not(.bst-unuse), .bst-injector-body > .bst-table:not(.bst-unuse)');
         //         var fielddata = {};
         //         // 取得した要素をログに表示
         //         inputFields.forEach(element => {
@@ -550,7 +550,7 @@ window.addEventListener('load', function () {
         //         localStorage.setItem(pageKey.split('?')[0], JSON.stringify(data));
 
         //         // classが'test'のmain要素を取得
-        //         var mainElement = document.querySelector('.kb-injector-body');
+        //         var mainElement = document.querySelector('.bst-injector-body');
 
         //         if (mainElement) {
         //             // 'unsaved'属性を削除
