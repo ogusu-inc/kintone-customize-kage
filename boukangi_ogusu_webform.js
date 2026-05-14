@@ -1,3 +1,4 @@
+console.log("SCRIPT LOADED SUCCESSFULLY");
 window.addEventListener('load', function () {
     'use strict';
 
