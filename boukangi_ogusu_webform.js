@@ -18,7 +18,7 @@ window.addEventListener('load', function () {
 
             const sizeInput = node.querySelector('[field-id="サイズ"] input');
             const searchBtn = node.querySelector(
-                '[field-id="サイズ"] .kb-icon-lookup.kb-search'
+                '[field-id="サイズ"] .bst-icon-lookup.bst-search'
             );
 
             if (!sizeInput || !searchBtn) return;
@@ -32,7 +32,7 @@ window.addEventListener('load', function () {
 
             // 空調服 → open lookup WITHOUT keyword
             if (currentType === '空調服') {
-                sizeInput.value = currentType; // ✅ MUST be empty
+                sizeInput.value = currentType; //  MUST be empty
                 searchBtn.click();
                 return;
             }
@@ -49,7 +49,7 @@ window.addEventListener('load', function () {
     function filterForAirConditionedClothing() {
         if (currentType !== '空調服') return;
 
-        const dialog = document.querySelector('.kb-dialog-container');
+        const dialog = document.querySelector('.bst-dialog-container');
         if (!dialog) return;
 
         const rows = dialog.querySelectorAll('tbody tr');
@@ -83,7 +83,7 @@ window.addEventListener('load', function () {
     let dialogObserver = null;
 
     function observeLookupDialog() {
-        const dialog = document.querySelector('.kb-dialog-container');
+        const dialog = document.querySelector('.bst-dialog-container');
         if (!dialog) return;
 
         if (dialogObserver) dialogObserver.disconnect();
@@ -116,7 +116,7 @@ window.addEventListener('load', function () {
                 }
 
                 // Lookup dialog opened
-                if (elem.classList && elem.classList.contains('kb-dialog-container')) {
+                if (elem.classList && elem.classList.contains('bst-dialog-container')) {
                     setTimeout(observeLookupDialog, 50);
                 }
 
