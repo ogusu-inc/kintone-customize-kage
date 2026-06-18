@@ -131,21 +131,52 @@ window.addEventListener('load', function () {
     }
 
     /**
+     * 指定フィールドを非表示にする
+     * @param {string} fieldCode
+     */
+    function hideField(fieldCode) {
+        try {
+            const el = getFieldEl(fieldCode);
+            if (!el) {
+                console.warn(`${LOG_PREFIX} フィールドが見つかりません: ${fieldCode}`);
+                return;
+            }
+            el.style.setProperty('display', 'none', 'important');
+        } catch (e) {
+            console.error(`${LOG_PREFIX} hideField エラー (${fieldCode}):`, e);
+        }
+    }
+
+    /**
+     * 指定フィールドを再表示する。
+     * 非表示で付与した display:none を確実に解除する。
+     * @param {string} fieldCode
+     */
+    function showField(fieldCode) {
+        try {
+            const el = getFieldEl(fieldCode);
+            if (!el) {
+                console.warn(`${LOG_PREFIX} フィールドが見つかりません: ${fieldCode}`);
+                return;
+            }
+            // インラインの display 指定（!important 含む）を解除して元の表示へ戻す
+            el.style.removeProperty('display');
+            if (el.hasAttribute('hidden')) el.removeAttribute('hidden');
+        } catch (e) {
+            console.error(`${LOG_PREFIX} showField エラー (${fieldCode}):`, e);
+        }
+    }
+
+    /**
      * 指定フィールドの表示・非表示を切り替える
      * @param {string} fieldCode
      * @param {boolean} visible true: 表示 / false: 非表示
      */
     function setFieldVisible(fieldCode, visible) {
-        try {
-            const el = getFieldEl(fieldCode);
-            if (!el) {
-                // フィールド未配置でもエラー停止させない
-                console.warn(`${LOG_PREFIX} フィールドが見つかりません: ${fieldCode}`);
-                return;
-            }
-            el.style.display = visible ? '' : 'none';
-        } catch (e) {
-            console.error(`${LOG_PREFIX} setFieldVisible エラー (${fieldCode}):`, e);
+        if (visible) {
+            showField(fieldCode);
+        } else {
+            hideField(fieldCode);
         }
     }
 
@@ -203,45 +234,66 @@ window.addEventListener('load', function () {
     }
 
     // ------------------------------------------------------------
-    // イベントバインド
-    //   制御元フィールドのコンテナに change を委譲バインドする。
-    //   select / radio / checkbox いずれの変更も拾える。
-    //   dataset フラグで二重バインドを防止。
+    // イベントバインド（document レベルの委譲）
+    //   制御元フィールドのコンテナに直接バインドすると、Boost! Injector が
+    //   ラジオボタンの内部DOMを再描画した際にリスナーが失われ、
+    //   「無→有」等の再変更を取りこぼす（再表示されない不具合の原因）。
+    //   document に一度だけ委譲することで、再描画後も発火し続ける。
+    //   change に加え click も拾い、ラジオボタンの選択変更を確実に検知する。
     // ------------------------------------------------------------
 
-    /**
-     * 1つの制御元フィールドへ change イベントをバインドする
-     * @param {string} fieldCode  制御元フィールドコード
-     * @param {Function} handler  実行する制御関数
-     * @returns {boolean} バインドできたら true
-     */
-    function bindControlField(fieldCode, handler) {
-        try {
-            const el = getFieldEl(fieldCode);
-            if (!el) return false;
-            if (el.dataset.kenshuuBound) return true; // 二重バインド防止
-            el.dataset.kenshuuBound = 'true';
+    // 制御元フィールドコード → 対応する制御関数
+    const CONTROL_HANDLERS = {
+        [FIELDS.TRANSPORT]: controlTransport,
+        [FIELDS.RADIO]:     controlRadio,
+        [FIELDS.PAYMENT]:   controlPayment,
+    };
 
-            el.addEventListener('change', function () {
-                handler();
-            });
-            console.log(`${LOG_PREFIX} "${fieldCode}" に change をバインド`);
-            return true;
-        } catch (e) {
-            console.error(`${LOG_PREFIX} bindControlField エラー (${fieldCode}):`, e);
-            return false;
+    /**
+     * change / click 共通ハンドラ。
+     * イベント発生元が制御元フィールド配下かどうかを判定し、該当制御を再実行する。
+     * @param {Event} e
+     */
+    function onControlEvent(e) {
+        try {
+            const target = e.target;
+            if (!target || !target.closest) return;
+            const field = target.closest('[field-id]');
+            if (!field) return;
+            const code = field.getAttribute('field-id');
+            const handler = CONTROL_HANDLERS[code];
+            if (!handler) return;
+            // ラジオ/チェックボックスの :checked 反映後に値を読むため次tickで実行
+            setTimeout(handler, 0);
+        } catch (err) {
+            console.error(`${LOG_PREFIX} onControlEvent エラー:`, err);
         }
     }
 
     /**
-     * 全制御元フィールドへのバインドを試みる
-     * @returns {boolean} 3フィールドすべてバインド済みなら true
+     * document への委譲イベントを一度だけ登録する
      */
-    function bindAll() {
-        const b1 = bindControlField(FIELDS.TRANSPORT, controlTransport);
-        const b2 = bindControlField(FIELDS.RADIO, controlRadio);
-        const b3 = bindControlField(FIELDS.PAYMENT, controlPayment);
-        return b1 && b2 && b3;
+    function bindGlobalDelegation() {
+        try {
+            if (document.documentElement.dataset.kenshuuDelegated) return; // 二重バインド防止
+            document.documentElement.dataset.kenshuuDelegated = 'true';
+
+            document.addEventListener('change', onControlEvent, true);
+            document.addEventListener('click', onControlEvent, true);
+            console.log(`${LOG_PREFIX} document への change/click 委譲を登録`);
+        } catch (e) {
+            console.error(`${LOG_PREFIX} bindGlobalDelegation エラー:`, e);
+        }
+    }
+
+    /**
+     * 制御元フィールドがすべて描画済みかを判定する
+     * @returns {boolean}
+     */
+    function allControlFieldsRendered() {
+        return !!getFieldEl(FIELDS.TRANSPORT)
+            && !!getFieldEl(FIELDS.RADIO)
+            && !!getFieldEl(FIELDS.PAYMENT);
     }
 
     // ------------------------------------------------------------
@@ -251,19 +303,20 @@ window.addEventListener('load', function () {
         try {
             console.log(`${LOG_PREFIX} 初期化開始`);
 
-            // 既に描画済みであればバインド＋初期表示制御を実行
-            const boundAll = bindAll();
+            // イベント委譲は描画状況に関わらず先に一度だけ登録する
+            bindGlobalDelegation();
+
+            // 既に描画済みであれば初期表示制御を実行
             applyAll();
 
             // Boost! Injector はフォームを非同期描画するため、
-            // 未描画のフィールドが出現したタイミングで再バインド/再適用する。
-            if (!boundAll) {
+            // フィールド出現や再描画のたびに表示制御を再適用する。
+            if (!allControlFieldsRendered()) {
                 const observer = new MutationObserver(function () {
-                    const done = bindAll();
                     applyAll();
-                    if (done) {
+                    if (allControlFieldsRendered()) {
                         observer.disconnect();
-                        console.log(`${LOG_PREFIX} 全フィールドのバインド完了・監視終了`);
+                        console.log(`${LOG_PREFIX} 全フィールド描画完了・監視終了`);
                     }
                 });
                 observer.observe(document.body, { childList: true, subtree: true });
