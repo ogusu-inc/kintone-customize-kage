@@ -84,6 +84,29 @@ window.addEventListener('load', function () {
      * @param {string} fieldId - フィールドコード
      * @param {boolean} visible - true: 表示 / false: 非表示
      */
+    // Boost! Injector が非表示に用いるクラス候補
+    const HIDDEN_CLASSES = ['bst-unuse', 'bst-hidden', 'bst-hide'];
+
+    /**
+     * 要素から既知の非表示指定（クラス / display:none / hidden属性）を解除する
+     * @param {Element} elm
+     */
+    function clearHidden(elm) {
+        if (!elm || !elm.classList) return;
+        HIDDEN_CLASSES.forEach(function (cls) {
+            if (elm.classList.contains(cls)) elm.classList.remove(cls);
+        });
+        if (elm.style && elm.style.display === 'none') {
+            elm.style.removeProperty('display');
+        }
+        if (elm.hasAttribute && elm.hasAttribute('hidden')) {
+            elm.removeAttribute('hidden');
+        }
+        if (elm.getAttribute && elm.getAttribute('aria-hidden') === 'true') {
+            elm.removeAttribute('aria-hidden');
+        }
+    }
+
     function setFieldVisible(fieldId, visible) {
         try {
             const el = getFieldEl(fieldId);
@@ -93,44 +116,70 @@ window.addEventListener('load', function () {
             }
             const control = getFieldControlElement(el);
 
-            // --- 原因調査用 診断ログ ---
-            var ancestorClasses = [];
-            var a = el;
-            for (var n = 0; a && a !== document.body && n < 8; n++) {
-                ancestorClasses.push(a.className || ('<' + a.tagName.toLowerCase() + '>'));
-                a = a.parentElement;
-            }
-            console.log('[申請区分制御] setFieldVisible 診断:', {
-                fieldId: fieldId,
-                element: el,
-                parentElement: el.parentElement,
-                'parentElement.style.display': el.parentElement ? el.parentElement.style.display : '(なし)',
-                ancestorClasses: ancestorClasses,
-                controlElement: control,
-                controlIsSelf: control === el,
-            });
+            const beforeHTML = el.outerHTML; // 表示前 outerHTML
 
             if (visible) {
-                // Boost! Injector は bst-unuse クラスで非表示にしているため必ず削除する
-                el.classList.remove('bst-unuse');
-                control.classList.remove('bst-unuse');
-                // 念のためインラインの非表示指定（!important 含む）も解除
-                control.style.removeProperty('display');
-                if (control.hasAttribute('hidden')) control.removeAttribute('hidden');
-                el.style.removeProperty('display');
-                if (el.hasAttribute('hidden')) el.removeAttribute('hidden');
+                // 1) 自要素・制御対象（専用ラッパー）の非表示指定を解除
+                clearHidden(el);
+                clearHidden(control);
+                // 2) ★祖先（グループ/セクション）側が非表示の場合も解除する。
+                //    銀行名・_2箇所振込 等はグループ内にあり、グループ側に
+                //    bst-unuse が残っていると、自要素のクラスを消しても表示されない。
+                //    兄弟フィールドは各自の bst-unuse を保持するため隠れたまま。
+                var a = el.parentElement;
+                while (a && a !== document.body) {
+                    clearHidden(a);
+                    a = a.parentElement;
+                }
             } else {
-                // Boost! Injector の方式に合わせ bst-unuse を付与して非表示にする
+                // Boost! Injector の方式に合わせ bst-unuse を付与して非表示
                 el.classList.add('bst-unuse');
                 control.style.setProperty('display', 'none', 'important');
             }
 
+            const afterHTML = el.outerHTML; // 表示後 outerHTML
+
             // --- デバッグログ ---
             console.log(fieldId, el.className, visible);
+            if (fieldId === FIELD_GINKO) {
+                console.log(`[診断] ${FIELD_GINKO} 表示前 outerHTML:`, beforeHTML);
+                console.log(`[診断] ${FIELD_GINKO} 表示後 outerHTML:`, afterHTML);
+            }
             console.log(`[申請区分制御] ${fieldId}: ${visible ? '表示' : '非表示'} (制御要素: ${control.className || control.tagName})`);
         } catch (e) {
             console.error(`[申請区分制御] setFieldVisible エラー (${fieldId}):`, e);
         }
+    }
+
+    /**
+     * 「住所変更の場合（表示OK）」と「銀行名 / _2箇所振込（表示NG）」の
+     * DOM 構造差分を比較するための調査用ログ。原因特定後は削除可。
+     */
+    var _debugCompared = false;
+    function debugCompareFields() {
+        if (_debugCompared) return;
+        _debugCompared = true;
+        [FIELD_JUSHO, FIELD_GINKO, FIELD_2FURIKOMI].forEach(function (fid) {
+            var el = getFieldEl(fid);
+            if (!el) {
+                console.log(`[比較] ${fid}: 要素が見つかりません`);
+                return;
+            }
+            var chain = [];
+            var a = el;
+            while (a && a !== document.body) {
+                chain.push({
+                    tag: a.tagName.toLowerCase(),
+                    class: a.className,
+                    hidden: HIDDEN_CLASSES.some(function (c) { return a.classList && a.classList.contains(c); }),
+                    inlineDisplay: a.style ? a.style.display : '',
+                    fieldCount: a.querySelectorAll ? a.querySelectorAll('[field-id]').length : 0,
+                });
+                a = a.parentElement;
+            }
+            console.log(`[比較] ${fid} outerHTML:`, el.outerHTML);
+            console.log(`[比較] ${fid} 祖先チェーン:`, chain);
+        });
     }
 
     /**
@@ -140,6 +189,9 @@ window.addEventListener('load', function () {
     function applyVisibility(value) {
         try {
             console.log(`[申請区分制御] 申請区分 = "${value}"`);
+
+            // 原因調査：3フィールドの DOM 構造を一度だけ比較出力
+            debugCompareFields();
 
             // --- 既存制御：住所変更の場合 / 銀行名（変更しない） ---
             const rule = VISIBILITY_RULES[value];
