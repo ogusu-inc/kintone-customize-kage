@@ -10,6 +10,16 @@ window.addEventListener('load', function () {
     const FIELD_JUSHO   = '住所変更の場合';
     const FIELD_GINKO   = '銀行名';
 
+    // 追加要件用フィールドコード
+    const FIELD_2FURIKOMI = '_2箇所振込';     // チェックボックス
+    const FIELD_GINKO2    = '第2口座銀行名';
+    const FIELD_KINGAKU   = '金額';
+
+    // _2箇所振込 を表示する申請区分
+    const SHINSEI_KYUYO   = '給与口座届出';
+    // _2箇所振込 の「希望する」選択肢ラベル
+    const OPTION_KIBOU    = '希望する';
+
     // 申請区分値 → フィールド表示ルール（true: 表示 / false: 非表示）
     const VISIBILITY_RULES = {
         '住所変更':     { [FIELD_JUSHO]: true,  [FIELD_GINKO]: false },
@@ -44,19 +54,78 @@ window.addEventListener('load', function () {
     function applyVisibility(value) {
         try {
             console.log(`[申請区分制御] 申請区分 = "${value}"`);
+
+            // --- 既存制御：住所変更の場合 / 銀行名（変更しない） ---
             const rule = VISIBILITY_RULES[value];
             if (!rule) {
                 // 未定義の値はすべて非表示（初期値空文字など）
                 console.log('[申請区分制御] ルール未定義のため制御対象フィールドをすべて非表示');
                 setFieldVisible(FIELD_JUSHO, false);
                 setFieldVisible(FIELD_GINKO, false);
-                return;
+            } else {
+                Object.entries(rule).forEach(function (entry) {
+                    setFieldVisible(entry[0], entry[1]);
+                });
             }
-            Object.entries(rule).forEach(function (entry) {
-                setFieldVisible(entry[0], entry[1]);
-            });
+
+            // --- 追加要件①：_2箇所振込 は「給与口座届出」のときのみ表示 ---
+            setFieldVisible(FIELD_2FURIKOMI, value === SHINSEI_KYUYO);
+
+            // --- 追加要件②：第2口座銀行名 / 金額 を _2箇所振込 の状態に応じて反映 ---
+            updateSecondAccountVisibility();
         } catch (e) {
             console.error('[申請区分制御] applyVisibility エラー:', e);
+        }
+    }
+
+    /**
+     * _2箇所振込 の「希望する」がチェックされているか判定する
+     * @returns {boolean} 希望する にチェックがあれば true
+     */
+    function isSecondAccountWanted() {
+        try {
+            var field = document.querySelector(`.bst-field[field-id="${FIELD_2FURIKOMI}"]`);
+            if (!field) return false;
+            var boxes = field.querySelectorAll('input[type="checkbox"]');
+            for (var i = 0; i < boxes.length; i++) {
+                var box = boxes[i];
+                // value属性 と 内包ラベルテキストの両方で「希望する」を照合
+                var text = box.value || '';
+                var label = box.closest('label');
+                if (label) text += ' ' + label.textContent;
+                if (text.indexOf(OPTION_KIBOU) !== -1 && box.checked) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (e) {
+            console.error('[申請区分制御] isSecondAccountWanted エラー:', e);
+            return false;
+        }
+    }
+
+    /**
+     * 第2口座銀行名 / 金額 の表示・非表示を更新する。
+     * 毎回いったん表示状態へ戻してから、条件に応じて非表示にする
+     * （「非表示になるが再表示されない」不具合を防止）。
+     */
+    function updateSecondAccountVisibility() {
+        try {
+            var field = document.querySelector(`.bst-field[field-id="${FIELD_2FURIKOMI}"]`);
+            // _2箇所振込 自体が非表示なら配下フィールドも表示しない
+            var secondVisible = !!field && field.style.display !== 'none';
+
+            // まず必ず表示状態へ戻す
+            setFieldVisible(FIELD_GINKO2, true);
+            setFieldVisible(FIELD_KINGAKU, true);
+
+            // 条件を満たさない場合のみ非表示にする
+            if (!secondVisible || !isSecondAccountWanted()) {
+                setFieldVisible(FIELD_GINKO2, false);
+                setFieldVisible(FIELD_KINGAKU, false);
+            }
+        } catch (e) {
+            console.error('[申請区分制御] updateSecondAccountVisibility エラー:', e);
         }
     }
 
@@ -67,22 +136,48 @@ window.addEventListener('load', function () {
     function bindDropdown() {
         try {
             var select = document.querySelector(`.bst-field[field-id="${FIELD_SHINSEI}"] select`);
-            if (!select) {
+
+            // --- 申請区分 select のバインド（二重バインド防止） ---
+            if (select && !select.dataset.shinseiVisibilityBound) {
+                select.dataset.shinseiVisibilityBound = 'true';
+
+                // 初期表示時の制御
+                applyVisibility(select.value);
+
+                // 変更時の即時反映
+                select.addEventListener('change', function () {
+                    applyVisibility(this.value);
+                });
+
+                console.log('[申請区分制御] ドロップダウンへのバインド完了');
+            } else if (!select) {
                 console.warn('[申請区分制御] 申請区分 select が見つかりません');
-                return;
             }
-            if (select.dataset.shinseiVisibilityBound) return; // 二重バインド防止
-            select.dataset.shinseiVisibilityBound = 'true';
 
-            // 初期表示時の制御
-            applyVisibility(select.value);
+            // --- 追加要件②：_2箇所振込 チェックボックスのバインド ---
+            // select の early-return に依存させず独立して実行する
+            var secondField = document.querySelector(`.bst-field[field-id="${FIELD_2FURIKOMI}"]`);
+            if (secondField && !secondField.dataset.secondAccountBound) {
+                secondField.dataset.secondAccountBound = 'true';
 
-            // 変更時の即時反映
-            select.addEventListener('change', function () {
-                applyVisibility(this.value);
-            });
+                var boxes = secondField.querySelectorAll('input[type="checkbox"]');
+                for (var i = 0; i < boxes.length; i++) {
+                    // 変更時の即時反映
+                    boxes[i].addEventListener('change', function () {
+                        updateSecondAccountVisibility();
+                    });
+                }
 
-            console.log('[申請区分制御] ドロップダウンへのバインド完了');
+                // チェックボックスが select より後に描画された場合に備え、
+                // 現在の申請区分値で初期表示を再適用する
+                if (select) {
+                    applyVisibility(select.value);
+                } else {
+                    updateSecondAccountVisibility();
+                }
+
+                console.log('[申請区分制御] _2箇所振込 チェックボックスへのバインド完了');
+            }
         } catch (e) {
             console.error('[申請区分制御] bindDropdown エラー:', e);
         }
@@ -96,10 +191,14 @@ window.addEventListener('load', function () {
                 var node = addedNodes[j];
                 if (node.nodeType !== Node.ELEMENT_NODE) continue;
 
-                // 追加された要素の中に申請区分フィールドが含まれる場合
-                var hasField = node.querySelector && node.querySelector(`[field-id="${FIELD_SHINSEI}"]`);
-                // 追加された要素自身が申請区分フィールドの場合
-                var isField = node.getAttribute && node.getAttribute('field-id') === FIELD_SHINSEI;
+                // 追加された要素の中に申請区分 / _2箇所振込 フィールドが含まれる場合
+                var hasField = node.querySelector && (
+                    node.querySelector(`[field-id="${FIELD_SHINSEI}"]`) ||
+                    node.querySelector(`[field-id="${FIELD_2FURIKOMI}"]`)
+                );
+                // 追加された要素自身が申請区分 / _2箇所振込 フィールドの場合
+                var nodeFieldId = node.getAttribute && node.getAttribute('field-id');
+                var isField = nodeFieldId === FIELD_SHINSEI || nodeFieldId === FIELD_2FURIKOMI;
 
                 if (hasField || isField) {
                     bindDropdown();
@@ -112,7 +211,8 @@ window.addEventListener('load', function () {
     observer.observe(document.body, { childList: true, subtree: true });
 
     // ページロード時点で既に描画済みの場合は即時バインド
-    var alreadyRendered = document.querySelector(`.bst-field[field-id="${FIELD_SHINSEI}"] select`);
+    var alreadyRendered = document.querySelector(`.bst-field[field-id="${FIELD_SHINSEI}"] select`)
+        || document.querySelector(`.bst-field[field-id="${FIELD_2FURIKOMI}"]`);
     if (alreadyRendered) {
         bindDropdown();
     }
