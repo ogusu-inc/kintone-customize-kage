@@ -111,15 +111,22 @@ window.addEventListener('load', function () {
             });
 
             if (visible) {
-                // 内側・制御対象の双方から非表示指定（!important 含む）を確実に解除
+                // Boost! Injector は bst-unuse クラスで非表示にしているため必ず削除する
+                el.classList.remove('bst-unuse');
+                control.classList.remove('bst-unuse');
+                // 念のためインラインの非表示指定（!important 含む）も解除
                 control.style.removeProperty('display');
                 if (control.hasAttribute('hidden')) control.removeAttribute('hidden');
                 el.style.removeProperty('display');
                 if (el.hasAttribute('hidden')) el.removeAttribute('hidden');
             } else {
+                // Boost! Injector の方式に合わせ bst-unuse を付与して非表示にする
+                el.classList.add('bst-unuse');
                 control.style.setProperty('display', 'none', 'important');
             }
 
+            // --- デバッグログ ---
+            console.log(fieldId, el.className, visible);
             console.log(`[申請区分制御] ${fieldId}: ${visible ? '表示' : '非表示'} (制御要素: ${control.className || control.tagName})`);
         } catch (e) {
             console.error(`[申請区分制御] setFieldVisible エラー (${fieldId}):`, e);
