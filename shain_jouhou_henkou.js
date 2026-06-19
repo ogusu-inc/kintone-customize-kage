@@ -29,19 +29,98 @@ window.addEventListener('load', function () {
     };
 
     /**
-     * 指定フィールドの表示・非表示を切り替える
+     * フィールド要素（.bst-field[field-id]）を取得する
+     * @param {string} fieldId - フィールドコード
+     * @returns {Element|null}
+     */
+    function getFieldEl(fieldId) {
+        return document.querySelector(`.bst-field[field-id="${fieldId}"]`)
+            || document.querySelector(`[field-id="${fieldId}"]`);
+    }
+
+    /**
+     * 表示・非表示の実体となる要素を特定する。
+     * Boost! Injector は .bst-field 内側ではなく、そのフィールド専用の
+     * 親（祖先）コンテナの display を切り替えている場合がある。
+     * そこで「そのフィールド 1 つだけを内包する最上位の祖先」を辿り、
+     * それを制御対象とする（兄弟フィールドを巻き込まない）。
+     * @param {Element} fieldEl
+     * @returns {Element} 制御対象要素
+     */
+    function getFieldControlElement(fieldEl) {
+        var control = fieldEl;
+        var p = fieldEl.parentElement;
+        while (p && p !== document.body) {
+            var owned = p.querySelectorAll('[field-id]');
+            // この祖先が「自フィールドだけ」を含む間は登り続ける
+            if (owned.length === 1 && owned[0] === fieldEl) {
+                control = p;
+                p = p.parentElement;
+            } else {
+                break; // 他フィールドを含む祖先に達したら停止
+            }
+        }
+        return control;
+    }
+
+    /**
+     * フィールドが実際に画面表示されているか判定する。
+     * offsetParent は要素自身/祖先のいずれかが display:none のとき null になるため、
+     * 祖先側で非表示にされているケースも検知できる。
+     * @param {string} fieldId
+     * @returns {boolean}
+     */
+    function isFieldVisible(fieldId) {
+        var el = getFieldEl(fieldId);
+        if (!el) return false;
+        if (el.offsetParent !== null) return true;
+        // position:fixed 等で offsetParent が null になる場合の保険
+        return window.getComputedStyle(el).display !== 'none';
+    }
+
+    /**
+     * 指定フィールドの表示・非表示を切り替える（全フィールド共通）。
+     * 制御対象は getFieldControlElement() で特定した実体要素。
      * @param {string} fieldId - フィールドコード
      * @param {boolean} visible - true: 表示 / false: 非表示
      */
     function setFieldVisible(fieldId, visible) {
         try {
-            const el = document.querySelector(`.bst-field[field-id="${fieldId}"]`);
+            const el = getFieldEl(fieldId);
             if (!el) {
                 console.warn(`[申請区分制御] フィールドが見つかりません: ${fieldId}`);
                 return;
             }
-            el.style.display = visible ? '' : 'none';
-            console.log(`[申請区分制御] ${fieldId}: ${visible ? '表示' : '非表示'}`);
+            const control = getFieldControlElement(el);
+
+            // --- 原因調査用 診断ログ ---
+            var ancestorClasses = [];
+            var a = el;
+            for (var n = 0; a && a !== document.body && n < 8; n++) {
+                ancestorClasses.push(a.className || ('<' + a.tagName.toLowerCase() + '>'));
+                a = a.parentElement;
+            }
+            console.log('[申請区分制御] setFieldVisible 診断:', {
+                fieldId: fieldId,
+                element: el,
+                parentElement: el.parentElement,
+                'parentElement.style.display': el.parentElement ? el.parentElement.style.display : '(なし)',
+                ancestorClasses: ancestorClasses,
+                controlElement: control,
+                controlIsSelf: control === el,
+            });
+
+            if (visible) {
+                // 内側・制御対象の双方から非表示指定（!important 含む）を確実に解除
+                control.style.removeProperty('display');
+                if (control.hasAttribute('hidden')) control.removeAttribute('hidden');
+                el.style.removeProperty('display');
+                if (el.hasAttribute('hidden')) el.removeAttribute('hidden');
+            } else {
+                control.style.setProperty('display', 'none', 'important');
+            }
+
+            console.log(`[申請区分制御] ${fieldId}: ${visible ? '表示' : '非表示'} (制御要素: ${control.className || control.tagName})`);
         } catch (e) {
             console.error(`[申請区分制御] setFieldVisible エラー (${fieldId}):`, e);
         }
@@ -111,9 +190,9 @@ window.addEventListener('load', function () {
      */
     function updateSecondAccountVisibility() {
         try {
-            var field = document.querySelector(`.bst-field[field-id="${FIELD_2FURIKOMI}"]`);
             // _2箇所振込 自体が非表示なら配下フィールドも表示しない
-            var secondVisible = !!field && field.style.display !== 'none';
+            // （祖先側で非表示にされるケースも検知するため isFieldVisible を使用）
+            var secondVisible = isFieldVisible(FIELD_2FURIKOMI);
 
             // まず必ず表示状態へ戻す
             setFieldVisible(FIELD_GINKO2, true);
