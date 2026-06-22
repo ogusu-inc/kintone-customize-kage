@@ -23,6 +23,7 @@ window.addEventListener('load', function () {
 
     const SHINSEI_KYUYO = '給与口座届出';      // _2箇所振込 を表示する申請区分
     const OPTION_KIBOU  = '希望する';          // _2箇所振込 の選択肢
+    const OPTION_FUTSUU = '普通';              // 口座種類 / 口座種類2 の初期値
 
     // 申請区分値 → フィールド表示ルール（true: 表示 / false: 非表示）
     const VISIBILITY_RULES = {
@@ -70,6 +71,35 @@ window.addEventListener('load', function () {
     }
 
     /**
+     * 口座種類ドロップダウンに初期値「普通」を設定する（要件③）。
+     *  - フィールドごとに一度だけ実行（dataset フラグで保証）。
+     *  - 現在値が未設定（空）の場合のみ設定。既存値があれば上書きしない。
+     *  - 一度フラグが立つと再実行しないため、表示・非表示の切り替えや
+     *    ユーザーの手動変更後に「普通」へ戻ることはない。
+     */
+    function applyDefaultKouzaShurui(fieldId) {
+        const select = document.querySelector(`.bst-field[field-id="${fieldId}"] select`);
+        if (!select) return;
+        if (select.dataset.kouzaDefaultApplied) return;   // 初回のみ
+        select.dataset.kouzaDefaultApplied = 'true';
+
+        // 既に値が設定されている場合（既存レコード等）は上書きしない
+        if (select.value && select.value.trim() !== '') return;
+
+        // 「普通」に一致する option を選択
+        const options = select.options;
+        for (let i = 0; i < options.length; i++) {
+            const opt = options[i];
+            if ((opt.value && opt.value.indexOf(OPTION_FUTSUU) !== -1)
+                || opt.textContent.indexOf(OPTION_FUTSUU) !== -1) {
+                select.value = opt.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                break;
+            }
+        }
+    }
+
+    /**
      * 第2口座銀行名 / 金額 / 口座種類2 / 口座番号2 の表示を更新する。
      * 毎回いったん表示へ戻してから条件に応じて非表示にする
      * （「非表示になるが再表示されない」不具合を防止）。
@@ -81,6 +111,9 @@ window.addEventListener('load', function () {
         setFieldVisible(FIELD_KINGAKU, show);           // 既存制御（変更なし）
         setFieldVisible(FIELD_KOUZA_SHURUI2, show);     // ②追加：口座種類2
         setFieldVisible(FIELD_KOUZA_BANGOU2, show);     // ②追加：口座番号2
+
+        // ③口座種類2 表示時に初期値「普通」を設定（初回・未設定時のみ）
+        if (show) applyDefaultKouzaShurui(FIELD_KOUZA_SHURUI2);
     }
 
     /** 申請区分の値に対応する表示ルールを適用する */
@@ -95,6 +128,9 @@ window.addEventListener('load', function () {
         const isKyuyo = value === SHINSEI_KYUYO;
         setFieldVisible(FIELD_KOUZA_SHURUI, isKyuyo);
         setFieldVisible(FIELD_KOUZA_BANGOU, isKyuyo);
+
+        // ③口座種類 表示時に初期値「普通」を設定（初回・未設定時のみ）
+        if (isKyuyo) applyDefaultKouzaShurui(FIELD_KOUZA_SHURUI);
 
         // _2箇所振込 は「給与口座届出」のときのみ表示
         setFieldVisible(FIELD_2FURIKOMI, isKyuyo);
