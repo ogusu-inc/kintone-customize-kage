@@ -11,9 +11,15 @@ window.addEventListener('load', function () {
     const FIELD_JUSHO   = '住所変更の場合';
     const FIELD_GINKO   = '銀行名';
 
+    const FIELD_KOUZA_SHURUI = '口座種類';     // 申請区分=給与口座届出 のときのみ表示
+    const FIELD_KOUZA_BANGOU = '口座番号';     // 申請区分=給与口座届出 のときのみ表示
+
     const FIELD_2FURIKOMI = '_2箇所振込';     // チェックボックス
     const FIELD_GINKO2    = '第2口座銀行名';
     const FIELD_KINGAKU   = '金額';
+
+    const FIELD_KOUZA_SHURUI2 = '口座種類2';   // _2箇所振込=希望する のときのみ表示
+    const FIELD_KOUZA_BANGOU2 = '口座番号2';   // _2箇所振込=希望する のときのみ表示
 
     const SHINSEI_KYUYO = '給与口座届出';      // _2箇所振込 を表示する申請区分
     const OPTION_KIBOU  = '希望する';          // _2箇所振込 の選択肢
@@ -64,15 +70,17 @@ window.addEventListener('load', function () {
     }
 
     /**
-     * 第2口座銀行名 / 金額 の表示を更新する。
+     * 第2口座銀行名 / 金額 / 口座種類2 / 口座番号2 の表示を更新する。
      * 毎回いったん表示へ戻してから条件に応じて非表示にする
      * （「非表示になるが再表示されない」不具合を防止）。
      * _2箇所振込 が非表示、または「希望する」未チェックなら非表示。
      */
     function updateSecondAccountVisibility() {
         const show = isFieldVisible(FIELD_2FURIKOMI) && isSecondAccountWanted();
-        setFieldVisible(FIELD_GINKO2, show);
-        setFieldVisible(FIELD_KINGAKU, show);
+        setFieldVisible(FIELD_GINKO2, show);            // 既存制御（変更なし）
+        setFieldVisible(FIELD_KINGAKU, show);           // 既存制御（変更なし）
+        setFieldVisible(FIELD_KOUZA_SHURUI2, show);     // ②追加：口座種類2
+        setFieldVisible(FIELD_KOUZA_BANGOU2, show);     // ②追加：口座番号2
     }
 
     /** 申請区分の値に対応する表示ルールを適用する */
@@ -83,10 +91,15 @@ window.addEventListener('load', function () {
             setFieldVisible(fieldId, rule[fieldId]);
         });
 
-        // ①_2箇所振込 は「給与口座届出」のときのみ表示
-        setFieldVisible(FIELD_2FURIKOMI, value === SHINSEI_KYUYO);
+        // ①口座種類 / 口座番号 は「給与口座届出」のときのみ表示（銀行名と同条件）
+        const isKyuyo = value === SHINSEI_KYUYO;
+        setFieldVisible(FIELD_KOUZA_SHURUI, isKyuyo);
+        setFieldVisible(FIELD_KOUZA_BANGOU, isKyuyo);
 
-        // ②第2口座銀行名 / 金額 を _2箇所振込 の状態に応じて反映
+        // _2箇所振込 は「給与口座届出」のときのみ表示
+        setFieldVisible(FIELD_2FURIKOMI, isKyuyo);
+
+        // ②第2口座銀行名 / 金額 / 口座種類2 / 口座番号2 を _2箇所振込 の状態に応じて反映
         updateSecondAccountVisibility();
     }
 
