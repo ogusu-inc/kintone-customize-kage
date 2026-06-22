@@ -74,29 +74,65 @@ window.addEventListener('load', function () {
      * 口座種類ドロップダウンに初期値「普通」を設定する（要件③）。
      *  - フィールドごとに一度だけ実行（dataset フラグで保証）。
      *  - 現在値が未設定（空）の場合のみ設定。既存値があれば上書きしない。
+     *  - 成功（または既存値の確定）まではフラグを立てず、select / option が
+     *    未描画ならリトライする。これにより「空欄のまま」を防止する。
      *  - 一度フラグが立つと再実行しないため、表示・非表示の切り替えや
      *    ユーザーの手動変更後に「普通」へ戻ることはない。
+     * @param {string} fieldId 対象フィールド
+     * @param {number} [attempt] 内部リトライ回数（外部からは指定不要）
      */
-    function applyDefaultKouzaShurui(fieldId) {
-        const select = document.querySelector(`.bst-field[field-id="${fieldId}"] select`);
-        if (!select) return;
-        if (select.dataset.kouzaDefaultApplied) return;   // 初回のみ
-        select.dataset.kouzaDefaultApplied = 'true';
+    function applyDefaultKouzaShurui(fieldId, attempt) {
+        attempt = attempt || 0;
 
-        // 既に値が設定されている場合（既存レコード等）は上書きしない
-        if (select.value && select.value.trim() !== '') return;
+        const field = getFieldEl(fieldId);
+        const select = field && field.querySelector('select');
 
-        // 「普通」に一致する option を選択
+        // select が未描画なら少し待って再試行（フラグは立てない）
+        if (!select) {
+            if (attempt < 10) {
+                setTimeout(function () { applyDefaultKouzaShurui(fieldId, attempt + 1); }, 100);
+            }
+            return;
+        }
+
+        if (select.dataset.kouzaDefaultApplied) return;   // 処理済みなら何もしない
+
+        // 既に値あり（ユーザー選択・既存レコード）→ 上書きせずフラグ確定
+        if (select.value && select.value.trim() !== '') {
+            select.dataset.kouzaDefaultApplied = 'true';
+            return;
+        }
+
+        // 「普通」に一致する option を value / 表示テキスト両面で探す
+        let target = null;
         const options = select.options;
         for (let i = 0; i < options.length; i++) {
             const opt = options[i];
-            if ((opt.value && opt.value.indexOf(OPTION_FUTSUU) !== -1)
-                || opt.textContent.indexOf(OPTION_FUTSUU) !== -1) {
-                select.value = opt.value;
-                select.dispatchEvent(new Event('change', { bubbles: true }));
+            const text = (opt.textContent || '').trim();
+            if (opt.value === OPTION_FUTSUU || text === OPTION_FUTSUU
+                || (opt.value && opt.value.indexOf(OPTION_FUTSUU) !== -1)
+                || text.indexOf(OPTION_FUTSUU) !== -1) {
+                target = opt;
                 break;
             }
         }
+
+        // option がまだ生成されていない可能性 → 再試行（フラグは立てない）
+        if (!target) {
+            if (attempt < 10) {
+                setTimeout(function () { applyDefaultKouzaShurui(fieldId, attempt + 1); }, 100);
+            } else {
+                console.warn(`[申請区分制御] 「${OPTION_FUTSUU}」の選択肢が見つかりません: ${fieldId}`);
+            }
+            return;
+        }
+
+        // 「普通」を選択し input/change を発火して Boost! 側の状態へ反映
+        target.selected = true;
+        select.value = target.value;
+        select.dispatchEvent(new Event('input',  { bubbles: true }));
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        select.dataset.kouzaDefaultApplied = 'true'; // 成功後にフラグ確定
     }
 
     /**
