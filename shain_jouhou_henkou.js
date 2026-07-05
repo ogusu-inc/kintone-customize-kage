@@ -13,6 +13,8 @@ window.addEventListener('load', function () {
 
     const FIELD_KOUZA_SHURUI = '口座種類';     // 申請区分=給与口座届出 のときのみ表示
     const FIELD_KOUZA_BANGOU = '口座番号';     // 申請区分=給与口座届出 のときのみ表示
+    const FIELD_SHITEN_MEI   = '支店名';       // 申請区分=給与口座届出 のときのみ表示（口座種類と同条件）
+    const FIELD_SHITEN_BANGOU = '支店番号';    // 申請区分=給与口座届出 のときのみ表示（口座種類と同条件）
 
     const FIELD_2FURIKOMI = '_2箇所振込';     // チェックボックス
     const FIELD_GINKO2    = '第2口座銀行名';
@@ -21,10 +23,31 @@ window.addEventListener('load', function () {
 
     const FIELD_KOUZA_SHURUI2 = '口座種類2';   // _2箇所振込=希望する のときのみ表示
     const FIELD_KOUZA_BANGOU2 = '口座番号2';   // _2箇所振込=希望する のときのみ表示
+    const FIELD_SHITEN_MEI2   = '支店名2';     // _2箇所振込=希望する のときのみ表示（口座種類2と同条件）
+    const FIELD_SHITEN_BANGOU2 = '支店番号2';  // _2箇所振込=希望する のときのみ表示（口座種類2と同条件）
 
     const SHINSEI_KYUYO = '給与口座届出';      // _2箇所振込 を表示する申請区分
     const OPTION_KIBOU  = '希望する';          // _2箇所振込 の選択肢
     const OPTION_FUTSUU = '普通';              // 口座種類 / 口座種類2 の初期値
+
+    // 「口座種類」と同一の表示条件（申請区分=給与口座届出）で制御するフィールド群
+    const FIELDS_KYUYO_KOUZA = [
+        FIELD_KOUZA_SHURUI,
+        FIELD_KOUZA_BANGOU,
+        FIELD_SHITEN_MEI,
+        FIELD_SHITEN_BANGOU,
+    ];
+
+    // 「口座種類2」と同一の表示条件（申請区分=給与口座届出 かつ _2箇所振込=希望する）で制御するフィールド群
+    const FIELDS_SECOND_ACCOUNT = [
+        FIELD_GINKO2,
+        FIELD_KOUZA_SHURUI2,
+        FIELD_KOUZA_BANGOU2,
+        FIELD_SHITEN_MEI2,
+        FIELD_SHITEN_BANGOU2,
+        FIELD_KYUYO_KINGAKU,
+        FIELD_SHOYO_KINGAKU,
+    ];
 
     // 申請区分値 → フィールド表示ルール（true: 表示 / false: 非表示）
     const VISIBILITY_RULES = {
@@ -137,18 +160,17 @@ window.addEventListener('load', function () {
     }
 
     /**
-     * 第2口座銀行名 / 給与金額 / 賞与金額 / 口座種類2 / 口座番号2 の表示を更新する。
+     * FIELDS_SECOND_ACCOUNT（第2口座銀行名 / 口座種類2 / 口座番号2 / 支店名2 /
+     * 支店番号2 / 給与金額 / 賞与金額）の表示を更新する。
      * 毎回いったん表示へ戻してから条件に応じて非表示にする
      * （「非表示になるが再表示されない」不具合を防止）。
      * _2箇所振込 が非表示、または「希望する」未チェックなら非表示。
      */
     function updateSecondAccountVisibility() {
         const show = isFieldVisible(FIELD_2FURIKOMI) && isSecondAccountWanted();
-        setFieldVisible(FIELD_GINKO2, show);            // 既存制御（変更なし）
-        setFieldVisible(FIELD_KYUYO_KINGAKU, show);     // ①給与金額（旧:金額）
-        setFieldVisible(FIELD_SHOYO_KINGAKU, show);     // ②追加：賞与金額（給与金額と同条件）
-        setFieldVisible(FIELD_KOUZA_SHURUI2, show);     // 口座種類2
-        setFieldVisible(FIELD_KOUZA_BANGOU2, show);     // 口座番号2
+        FIELDS_SECOND_ACCOUNT.forEach(function (fieldId) {
+            setFieldVisible(fieldId, show);
+        });
 
         // ③口座種類2 表示時に初期値「普通」を設定（初回・未設定時のみ）
         if (show) applyDefaultKouzaShurui(FIELD_KOUZA_SHURUI2);
@@ -162,10 +184,11 @@ window.addEventListener('load', function () {
             setFieldVisible(fieldId, rule[fieldId]);
         });
 
-        // ①口座種類 / 口座番号 は「給与口座届出」のときのみ表示（銀行名と同条件）
+        // ①口座種類 / 口座番号 / 支店名 / 支店番号 は「給与口座届出」のときのみ表示（銀行名と同条件）
         const isKyuyo = value === SHINSEI_KYUYO;
-        setFieldVisible(FIELD_KOUZA_SHURUI, isKyuyo);
-        setFieldVisible(FIELD_KOUZA_BANGOU, isKyuyo);
+        FIELDS_KYUYO_KOUZA.forEach(function (fieldId) {
+            setFieldVisible(fieldId, isKyuyo);
+        });
 
         // ③口座種類 表示時に初期値「普通」を設定（初回・未設定時のみ）
         if (isKyuyo) applyDefaultKouzaShurui(FIELD_KOUZA_SHURUI);
@@ -173,7 +196,7 @@ window.addEventListener('load', function () {
         // _2箇所振込 は「給与口座届出」のときのみ表示
         setFieldVisible(FIELD_2FURIKOMI, isKyuyo);
 
-        // 第2口座銀行名 / 給与金額 / 賞与金額 / 口座種類2 / 口座番号2 を _2箇所振込 の状態に応じて反映
+        // FIELDS_SECOND_ACCOUNT を _2箇所振込 の状態に応じて反映
         updateSecondAccountVisibility();
     }
 
