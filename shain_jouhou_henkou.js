@@ -62,10 +62,10 @@ window.addEventListener('load', function () {
         return document.querySelector(`.bst-field[field-id="${fieldId}"]`);
     }
 
-    /** フィールドが表示中か（bst-unuse が付いていなければ表示） */
-    function isFieldVisible(fieldId) {
-        const el = getFieldEl(fieldId);
-        return !!el && !el.classList.contains('bst-unuse');
+    /** 申請区分 select の現在値を取得する（表示状態は一切参照しない） */
+    function getCurrentShinseiValue() {
+        const select = document.querySelector(`.bst-field[field-id="${FIELD_SHINSEI}"] select`);
+        return select ? select.value : '';
     }
 
     /** 指定フィールドの表示・非表示を切り替える（bst-unuse クラスで制御） */
@@ -162,12 +162,14 @@ window.addEventListener('load', function () {
     /**
      * FIELDS_SECOND_ACCOUNT（第2口座銀行名 / 口座種類2 / 口座番号2 / 支店名2 /
      * 支店番号2 / 給与金額 / 賞与金額）の表示を更新する。
-     * 毎回いったん表示へ戻してから条件に応じて非表示にする
-     * （「非表示になるが再表示されない」不具合を防止）。
-     * _2箇所振込 が非表示、または「希望する」未チェックなら非表示。
+     * 判定は必ず「申請区分の現在値」と「_2箇所振込の選択状態」だけで行い、
+     * フィールドの表示状態（isFieldVisible 相当）は一切参照しない。
+     * 呼び出す度に対象フィールド全件へ show/非表示を明示的に設定するため、
+     * 前回の表示状態が中途半端に残ることはない。
      */
     function updateSecondAccountVisibility() {
-        const show = isFieldVisible(FIELD_2FURIKOMI) && isSecondAccountWanted();
+        const isKyuyo = getCurrentShinseiValue() === SHINSEI_KYUYO;
+        const show = isKyuyo && isSecondAccountWanted();
         FIELDS_SECOND_ACCOUNT.forEach(function (fieldId) {
             setFieldVisible(fieldId, show);
         });
@@ -200,30 +202,51 @@ window.addEventListener('load', function () {
         updateSecondAccountVisibility();
     }
 
-    /** 申請区分 select と _2箇所振込 チェックボックスへのイベントバインド */
+    /**
+     * 申請区分 select と _2箇所振込 チェックボックスへイベントをバインドし、
+     * 現在の申請区分値で表示状態を再適用する。
+     * イベントバインドは dataset フラグで一度だけに制限するが、表示再適用
+     * （applyVisibility の呼び出し）は毎回必ず行う。これにより、支店名等の
+     * 対象フィールドが 申請区分 / _2箇所振込 より後から描画された場合でも、
+     * 表示状態が正しく反映される（初期表示時に非表示にし損ねるのを防止）。
+     */
     function bindDropdown() {
         const select = document.querySelector(`.bst-field[field-id="${FIELD_SHINSEI}"] select`);
 
-        // 申請区分 select（二重バインド防止）
+        // 申請区分 select への change イベント（二重バインド防止）
         if (select && !select.dataset.shinseiVisibilityBound) {
             select.dataset.shinseiVisibilityBound = 'true';
-            applyVisibility(select.value); // 初期表示
             select.addEventListener('change', function () {
                 applyVisibility(this.value); // 変更時に即時反映
             });
         }
 
-        // _2箇所振込 チェックボックス（select の状態に依存せず独立してバインド）
+        // _2箇所振込 チェックボックスへの change イベント（二重バインド防止）
         const secondField = getFieldEl(FIELD_2FURIKOMI);
         if (secondField && !secondField.dataset.secondAccountBound) {
             secondField.dataset.secondAccountBound = 'true';
             secondField.querySelectorAll('input[type="checkbox"]').forEach(function (box) {
                 box.addEventListener('change', updateSecondAccountVisibility);
             });
-            // チェックボックスが後から描画された場合に備え現在値で再適用
-            if (select) applyVisibility(select.value);
-            else updateSecondAccountVisibility();
         }
+
+        // 対象フィールドの描画タイミングに関わらず、現在の申請区分値で毎回再適用する
+        applyVisibility(select ? select.value : '');
+    }
+
+    // 表示制御の対象となる全フィールドID（いずれかが描画されたら再適用する）
+    const WATCHED_FIELD_IDS = [FIELD_SHINSEI, FIELD_2FURIKOMI]
+        .concat(FIELDS_KYUYO_KOUZA)
+        .concat(FIELDS_SECOND_ACCOUNT);
+
+    /** 追加されたノード（またはその子孫）に監視対象フィールドが含まれるか判定する */
+    function containsWatchedField(node) {
+        const fieldId = node.getAttribute && node.getAttribute('field-id');
+        if (WATCHED_FIELD_IDS.indexOf(fieldId) !== -1) return true;
+        if (!node.querySelector) return false;
+        return WATCHED_FIELD_IDS.some(function (id) {
+            return !!node.querySelector(`[field-id="${id}"]`);
+        });
     }
 
     // Boost! Injector フォームの描画完了を MutationObserver で検知
@@ -231,12 +254,7 @@ window.addEventListener('load', function () {
         for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
                 if (node.nodeType !== Node.ELEMENT_NODE) continue;
-                const fieldId = node.getAttribute && node.getAttribute('field-id');
-                const hasField = node.querySelector && (
-                    node.querySelector(`[field-id="${FIELD_SHINSEI}"]`) ||
-                    node.querySelector(`[field-id="${FIELD_2FURIKOMI}"]`)
-                );
-                if (hasField || fieldId === FIELD_SHINSEI || fieldId === FIELD_2FURIKOMI) {
+                if (containsWatchedField(node)) {
                     bindDropdown();
                     return;
                 }
@@ -245,9 +263,8 @@ window.addEventListener('load', function () {
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // ページロード時点で既に描画済みなら即時バインド
-    if (document.querySelector(`.bst-field[field-id="${FIELD_SHINSEI}"] select`)
-        || getFieldEl(FIELD_2FURIKOMI)) {
+    // ページロード時点で既に描画済みの対象フィールドがあれば即時バインド
+    if (WATCHED_FIELD_IDS.some(function (id) { return !!getFieldEl(id); })) {
         bindDropdown();
     }
 });
