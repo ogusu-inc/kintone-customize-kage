@@ -18,40 +18,40 @@
     return `${d.getFullYear()}-${mm}-${dd}`;
   };
 
-  // テーブルの各行について、空欄のものだけ初期値を入れる
+  // 1行ぶん：空欄のものだけ初期値を入れる
+  const fillRow = (f) => {
+    if (f[DATE_FIELD] && !f[DATE_FIELD].value) f[DATE_FIELD].value = today();
+    if (f[DEST_FIELD] && !f[DEST_FIELD].value) f[DEST_FIELD].value = DEST_DEFAULT;
+  };
+
+  // 全行
   const fillRows = (record) => {
     const table = record[TABLE_FIELD];
     if (!table) return;
-    const date = today();
-    table.value.forEach((row) => {
-      const f = row.value;
-      if (f[DATE_FIELD] && !f[DATE_FIELD].value) f[DATE_FIELD].value = date;
-      if (f[DEST_FIELD] && !f[DEST_FIELD].value) f[DEST_FIELD].value = DEST_DEFAULT;
-    });
+    table.value.forEach((row) => fillRow(row.value));
   };
 
-  // ===== レコード表示時（新規・編集） =====
-  kintone.events.on(
-    ['app.record.create.show', 'app.record.edit.show'],
-    (event) => {
-      const lookup = event.record[LOOKUP_FIELD];
-      lookup.value = KEY_VALUE;
-      lookup.lookup = true;
+  // ===== レコード追加画面の表示前 =====
+  bst.event.on('bst.create.load', (event) => {
+    const lookup = event.record[LOOKUP_FIELD];
+    lookup.value  = KEY_VALUE;
+    lookup.lookup = true;
 
-      fillRows(event.record);
-      return event;
-    }
-  );
+    fillRows(event.record);
+    return event;
+  });
 
-  // ===== テーブルの行追加・削除時 =====
-  kintone.events.on(
-    [
-      `app.record.create.change.${TABLE_FIELD}`,
-      `app.record.edit.change.${TABLE_FIELD}`
-    ],
-    (event) => {
-      fillRows(event.record);
-      return event;
-    }
-  );
+  // ===== テーブル行の追加前（＋ボタン） =====
+  bst.event.on(`bst.row.add.${TABLE_FIELD}`, (event) => {
+    const table = event.record[TABLE_FIELD];
+    const row = table && table.value[event.rowindex];
+    if (row) fillRow(row.value);   // 追加予定の行がレコード上にある場合のみ
+    return event;
+  });
+
+  // ===== 保存前（念のため：空欄の行があっても必ず初期値が入る） =====
+  bst.event.on('bst.create.submit', (event) => {
+    fillRows(event.record);
+    return event;
+  });
 })();
