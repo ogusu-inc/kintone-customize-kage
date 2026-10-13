@@ -1,0 +1,57 @@
+(() => {
+  'use strict';
+
+  // ===== 設定 =====
+  const LOOKUP_FIELD = '承認ルート';            // ルックアップのフィールドコード
+  const KEY_VALUE    = '工作機廃棄願い・届用';  // 承認マスタで検索する値
+
+  const TABLE_FIELD  = 'テーブル';              // ★テーブルのフィールドコードに変更
+  const DATE_FIELD   = '廃棄日';                // テーブル内のフィールドコード
+  const DEST_FIELD   = '廃棄先';                // テーブル内のフィールドコード
+  const DEST_DEFAULT = '高柳商店';
+
+  // ===== 共通処理 =====
+  const today = () => {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  };
+
+  // テーブルの各行について、空欄のものだけ初期値を入れる
+  const fillRows = (record) => {
+    const table = record[TABLE_FIELD];
+    if (!table) return;
+    const date = today();
+    table.value.forEach((row) => {
+      const f = row.value;
+      if (f[DATE_FIELD] && !f[DATE_FIELD].value) f[DATE_FIELD].value = date;
+      if (f[DEST_FIELD] && !f[DEST_FIELD].value) f[DEST_FIELD].value = DEST_DEFAULT;
+    });
+  };
+
+  // ===== レコード表示時（新規・編集） =====
+  kintone.events.on(
+    ['app.record.create.show', 'app.record.edit.show'],
+    (event) => {
+      const lookup = event.record[LOOKUP_FIELD];
+      lookup.value = KEY_VALUE;
+      lookup.lookup = true;
+
+      fillRows(event.record);
+      return event;
+    }
+  );
+
+  // ===== テーブルの行追加・削除時 =====
+  kintone.events.on(
+    [
+      `app.record.create.change.${TABLE_FIELD}`,
+      `app.record.edit.change.${TABLE_FIELD}`
+    ],
+    (event) => {
+      fillRows(event.record);
+      return event;
+    }
+  );
+})();
